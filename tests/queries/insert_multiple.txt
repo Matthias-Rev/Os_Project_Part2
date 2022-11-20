@@ -1,0 +1,9 @@
+insert Quentin Marchandise 0 maths 28/04/2000
+insert Hadrien Legast 1 info 30/09/1998
+insert Bastien Durandal 2 pharma 12/12/1994
+insert Corentin Francois 3 physics 12/12/1994
+insert Anatole Lanegris 4 info 7/5/1999
+insert Diane Vancauwelaert 5 pharma 8/8/1998
+insert Emeline Lecomte 6 chemistry 15/04/1993
+insert Fabienne Deschamps 7 info 6/7/1997
+insert Gaspard Francois 8 chemistry 4/4/1995
