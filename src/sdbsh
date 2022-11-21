@@ -10,8 +10,8 @@ do
 	echo -n "> "
 	read -r line
 	echo "$line" >&3
-	read -r reponse <&3
-	echo "$reponse"
+	#read -r reponse <&3
+	#echo "$reponse"
 done
 
 exec 3<&-

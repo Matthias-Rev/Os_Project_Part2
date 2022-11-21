@@ -10,15 +10,16 @@
 #include <climits>    // SSIZE_MAX
 #include <cstdio>     // printf
 #include <utility>    // std::move
-
+using namespace std;
 #include "errorcodes.hpp"
 
 void db_load(database_t *db, const char *path) {
+  int count;
   db->path = path;
-
+  scanf("%d", &count);
   // Ouvrir le fichier et déterminer sa taille
   struct stat info;
-  int         fd_db = open(path, O_RDONLY);
+  int fd_db = open(path, O_RDONLY);
 
   if (fd_db < 0) {
     warn("Unable to open %s (loading DB)", path);
@@ -37,12 +38,14 @@ void db_load(database_t *db, const char *path) {
     err(FILE_ERROR, "Corrupted DB file");
   }
 
+
   // Initialiser la BDD (en RAM)
   assert(db->data.empty());
   db->data.reserve(size + size/2);
 
+  size_t i;
   // Charger la BDD (en RAM)
-  for (size_t i = 0; i < size; ++i) {
+  for (i = 0; i < size; ++i) {
     student_t s;
     ssize_t   r = read(fd_db, &s, sizeof(s));
     if (r < 0) {
@@ -51,9 +54,13 @@ void db_load(database_t *db, const char *path) {
     if (static_cast<unsigned>(r) < sizeof(s)) {
       err(FILE_ERROR, "Corrupted DB file");
     }
+	if (i > 10){
+		break;
+	}
     db->data.push_back(std::move(s));
   }
-
+  // smalldb: DB loaded (/tmp/test_db.bin): 9 students in database
+  printf("smalldb: DB loaded (%s): %ld students in database\n", path, i);
   // Fermer le fichier
   if (close(fd_db) < 0) {
     err(FILE_ERROR, "Error while closing %s (after DB load)", path);
