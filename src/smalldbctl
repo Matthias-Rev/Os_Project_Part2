@@ -1,0 +1,38 @@
+#!/bin/bash
+set -m
+# enregistrer l'argument donner dans la commande
+var1=$1
+smalldb=$(pgrep smalldb)
+#list_ip sert à stocker tous les IP connectées au serveur
+#j'envoie le résultat de la commande ss dans un pipe, awk retourne la 5ème valeurs des colomnes du pip (cad Peer Address:Port)
+#qui sont les clients
+
+list_ip=$(ss --no-header  -Ontp4 'sport = :28772' | awk '{print $5}')
+
+#Permet de calculer le nombre d'IP qui écoute le port 28772
+length=0
+for ip in $list_ip;do
+	length=$(($length + 1))
+done
+
+
+#permet de détecter l'action à effectuer
+if [ "$var1" = "list" ]; then
+	#permet d'afficher le nombre de client à l'écoute
+	echo "$length client(s) listening:"
+	for ip in ${list_ip[@]}; do
+		echo "	>IP addr: $ip"
+	done
+fi
+
+if [ "$var1" = "sync" ]; then
+	echo "Sync process $smalldb..."
+	#envoie un signal permettant de sauvegarder la db
+	kill -SIGUSR1 $smalldb
+	echo "Done !"
+fi
+if [ "$var1" = "stop" ]; then
+	echo "Stopping in progress...."
+	# Demande la confirmation de la supression
+	kill -SIGINT $smalldb
+fi
