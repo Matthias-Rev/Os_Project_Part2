@@ -4,6 +4,7 @@
 #include <fcntl.h>     // open
 #include <sys/stat.h>  // stat
 #include <unistd.h>    // read
+#include <iostream>
 
 #include <algorithm>  // std::min
 #include <cassert>    // assert
@@ -14,9 +15,7 @@ using namespace std;
 #include "errorcodes.hpp"
 
 void db_load(database_t *db, const char *path) {
-  int count;
   db->path = path;
-  scanf("%d", &count);
   // Ouvrir le fichier et déterminer sa taille
   struct stat info;
   int fd_db = open(path, O_RDONLY);
@@ -27,6 +26,7 @@ void db_load(database_t *db, const char *path) {
     db->data.reserve(100);
     return;
   }
+
   if (fstat(fd_db, &info) != 0) {
     err(FILE_ERROR, "Unable to stat %s (loading DB)", path);
   }
@@ -54,11 +54,9 @@ void db_load(database_t *db, const char *path) {
     if (static_cast<unsigned>(r) < sizeof(s)) {
       err(FILE_ERROR, "Corrupted DB file");
     }
-	if (i > 10){
-		break;
-	}
     db->data.push_back(std::move(s));
   }
+
   // smalldb: DB loaded (/tmp/test_db.bin): 9 students in database
   printf("smalldb: DB loaded (%s): %ld students in database\n", path, i);
   // Fermer le fichier
@@ -67,7 +65,6 @@ void db_load(database_t *db, const char *path) {
   }
 
   printf("%lu students found in the db.\n", size);
-
   // Le code ci-dessus n'est pas performant
   // à cause du trop grand nombre d'appel à read
   // et de la copie de chaque étudiant dans data.

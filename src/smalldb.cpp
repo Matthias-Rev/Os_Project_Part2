@@ -9,7 +9,6 @@
 #include <unistd.h>
 #include <iostream>
 #include <pthread.h>
-
 #include "db.hpp"
 
 #define PORT 28772
@@ -20,30 +19,30 @@ using namespace std;
 typedef struct sockaddr_in SA_IN;
 typedef struct sockaddr SA;
 
-// Permet de définir un gestionnaire de signaux pour SIGPIPE,
-// ce qui évite une fermeture abrupte du programme à la réception
-// du signal (utile si vous avez des opérations de nettoyage à
-// faire avant de terminer le programme)
 #include <signal.h>
 
 #include "./common.h"
 
-database_t *db;
+
 int server_fd, client_socket, addr_size;
 const char *db_path = "../students.bin";
+database_t *db;
+
 SA_IN server_addr, client_addr;
 
 void init_socket(int *server_fd, int *new_socket);
 void * thread_connection(void* p_client_socket);
 void handler(int signum);
+void reading(int client_socket,char buffer[BUFFSIZE], char answer[BUFFSIZE]);
+
 
 int main(int argc, char const *argv[]) {
 
 	int count = 0;
 	if (argv[1]){
 		db_path = argv[1];
-
 	}
+
 	//db_load(db,db_path);
 	signal(SIGPIPE, SIG_IGN);
   // Initialisation du socket
@@ -61,11 +60,10 @@ int main(int argc, char const *argv[]) {
 		client_socket = checked(accept(server_fd, (SA*) &client_addr, (socklen_t*)&addr_size));
 		printf("smalldb: (%d) accepted connection !\n", client_socket);
 		
-		// pthread here
-		
+		// permet que seul le thread principal récupère le SIGINT
 		sigset_t mask;
 		sigemptyset(&mask);
-		sigaddset(&mask, SIGUSR1);
+		sigaddset(&mask, SIGINT);
 		sigprocmask(SIG_BLOCK, &mask, NULL);
 
 		pthread_t t;
@@ -93,27 +91,31 @@ void init_socket(int *server_fd, int *new_socket){
 	checked(bind(*server_fd, (SA*)&server_addr, sizeof(server_addr)));
 	checked(listen(*server_fd, SERVER_BACKLOG));
 
-  //size_t addrlen = sizeof(address);
-  //*new_socket = checked(accept(*server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen));
 	cout << "Init successful\n";
 }
 
 void * thread_connection(void* p_client_socket){
+
 	int client_socket = *((int*) p_client_socket);
+	free(p_client_socket);
 	char buffer[BUFFSIZE];
+	char answer[BUFFSIZE];
+	char buffer_w[] = "received";
 	size_t bytes_read;
 	int msgsize = 0;
-	int lu;
 
-	lu = read(client_socket, buffer, BUFFSIZE);
-		//checked_wr(write(new_socket, buffer, lu) < 0);
-		//cout << "ok\n";
-		//msgsize+=lu;
 
-	buffer[msgsize-1] = 0;
-	printf("Querry: %s\n", buffer);
-	fflush(stdout);
-
+	while (true){
+		reading(client_socket, buffer, answer);
+		//if(send(client_socket, buffer_w, strlen(buffer_w)+1, 0)<0){
+		if(send(client_socket, answer, strlen(answer)+1, 0)<0){
+			printf("Client (%d) disconnected (normal). Closing connection and thread\n", client_socket);
+			close(client_socket);
+			return NULL;
+		}
+		bzero(buffer,BUFFSIZE);
+		bzero(answer, BUFFSIZE);
+	}
 	return NULL;
 }
 
@@ -122,4 +124,31 @@ void handler(int signum) {
 	//db.save();
 	close(server_fd);
 	close(client_socket);
+}
+
+void reading(int client_socket,char buffer[BUFFSIZE], char answer[BUFFSIZE]){
+	int lu;
+	if(lu = read(client_socket, buffer, 1024)<0){
+		printf("Failed !\n");
+	}
+	buffer[strlen(buffer)-1] = 0;
+	printf("Querry: %s\n", buffer);
+
+	if(strncmp("select", buffer, strlen("select")-1)==0){
+		printf("select find\n");
+	}
+	if(strncmp("update", buffer, strlen("update")-1)==0){
+		printf("update find\n");
+	}
+	if(strncmp("insert", buffer, strlen("insert")-1)==0){
+		printf("insert find\n");
+	}
+	if(strncmp("delete", buffer, strlen("delete")-1)==0){
+		printf("delete find\n");
+	}
+	else{
+		printf("Unknown query type.");
+		strcpy(answer, "Unknown query type");
+	}
+
 }
