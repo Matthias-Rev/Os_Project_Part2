@@ -137,13 +137,13 @@ void reading(int client_socket,char buffer[BUFFSIZE], char answer[BUFFSIZE]){
 	if(strncmp("select", buffer, strlen("select")-1)==0){
 		printf("select find\n");
 	}
-	if(strncmp("update", buffer, strlen("update")-1)==0){
+	else if(strncmp("update", buffer, strlen("update")-1)==0){
 		printf("update find\n");
 	}
-	if(strncmp("insert", buffer, strlen("insert")-1)==0){
+	else if(strncmp("insert", buffer, strlen("insert")-1)==0){
 		printf("insert find\n");
 	}
-	if(strncmp("delete", buffer, strlen("delete")-1)==0){
+	else if(strncmp("delete", buffer, strlen("delete")-1)==0){
 		printf("delete find\n");
 	}
 	else{
@@ -152,3 +152,11 @@ void reading(int client_socket,char buffer[BUFFSIZE], char answer[BUFFSIZE]){
 	}
 
 }
+/*
+void parse_and_execute_select(FILE* fout, database_t* db, const char* const query);
+
+void parse_and_execute_update(FILE* fout, database_t* db, const char* const query);
+
+void parse_and_execute_insert(FILE* fout, database_t* db, const char* const query);
+
+void parse_and_execute_delete(FILE* fout, database_t* db, const char* const query);*/

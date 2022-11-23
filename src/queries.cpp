@@ -4,7 +4,9 @@
 
 // execute_* ///////////////////////////////////////////////////////////////////
 
-void execute_select(FILE* fout, database_t* const db, const char* const field,
+//void execute_select(FILE* fout, database_t* const db, const char* const field,
+//                    const char* const value) {
+void execute_select(char fout[1024], database_t* const db, const char* const field,
                     const char* const value) {
   std::function<bool(const student_t&)> predicate = get_filter(field, value);
   if (!predicate) {
@@ -59,8 +61,8 @@ void execute_delete(FILE* fout, database_t* const db, const char* const field,
 }
 
 // parse_and_execute_* ////////////////////////////////////////////////////////
-
-void parse_and_execute_select(FILE* fout, database_t* db, const char* const query) {
+void parse_and_execute_select(char fout[1024], database_t* db, const char* const query) {
+//void parse_and_execute_select(FILE* fout, database_t* db, const char* const query) {
   char ffield[32], fvalue[64];  // filter data
   int  counter;
   if (sscanf(query, "select %31[^=]=%63s%n", ffield, fvalue, &counter) != 2) {
@@ -128,16 +130,24 @@ void parse_and_execute(FILE* fout, database_t* db, const char* const query) {
 
 // query_fail_* ///////////////////////////////////////////////////////////////
 
-void query_fail_bad_query_type(FILE* const fout) {
+void query_fail_bad_query_type(FILE* const fouti) {
 }
-
+/*
 void query_fail_bad_format(FILE* const fout, const char * const query_type) {
 }
 
 void query_fail_too_long(FILE* const fout, const char * const query_type) {
+}*/
+void query_fail_bad_format(char fout[1024], const char * const query_type) {
+
 }
 
-void query_fail_bad_filter(FILE* const fout, const char* const field, const char* const filter) {
+void query_fail_too_long(char fout[1024], const char * const query_type) {
+}
+
+
+//void query_fail_bad_filter(FILE* const fout, const char* const field, const char* const filter) {
+void query_fail_bad_filter(char fout[1024], const char* const field, const char* const filter) {
 }
 
 void query_fail_bad_update(FILE* const fout, const char* const field, const char* const filter) {
