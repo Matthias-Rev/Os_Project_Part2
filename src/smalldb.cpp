@@ -14,7 +14,7 @@
 #define PORT 28772
 #define BUFFSIZE 1024
 #define SERVER_BACKLOG 15
-
+//just modify
 using namespace std;
 typedef struct sockaddr_in SA_IN;
 typedef struct sockaddr SA;
