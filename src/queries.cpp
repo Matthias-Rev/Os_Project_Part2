@@ -1,26 +1,42 @@
 #include "queries.hpp"
-
+#include "student.hpp"
+#include <string>
+#include <iostream>
+using namespace std;
 //#include "io.hpp"
+
+// compile with g++ -c queries.cpp -std=c++11
 
 // execute_* ///////////////////////////////////////////////////////////////////
 
-//void execute_select(FILE* fout, database_t* const db, const char* const field,
-//                    const char* const value) {
-void execute_select(char fout[1024], database_t* const db, const char* const field,
+void execute_select(string *fout, database_t* const db, const char* const field,
                     const char* const value) {
+  string found_w = "";
+  int count = 0;
+  size_t buffersize = 428;
   std::function<bool(const student_t&)> predicate = get_filter(field, value);
   if (!predicate) {
+    printf("bad filter\n");
     query_fail_bad_filter(fout, field, value);
     return;
   }
   for (const student_t& s : db->data) {
-    if (predicate(s)) {
+    if (predicate(s)) { 
+      count++;
+      char buffer[428];
+      student_to_str(buffer, &s, buffersize);
+      found_w = found_w + (string)buffer + "\n";
+      printf("the text is %s", found_w.c_str());
     }
   }
+  string final_rep = " student(s) selected";
+  found_w = found_w + to_string(count) + final_rep;
+  *fout = found_w;
 }
 
-void execute_update(FILE* fout, database_t* const db, const char* const ffield, const char* const fvalue, const char* const efield, const char* const evalue) {
+void execute_update(string *fout, database_t* const db, const char* const ffield, const char* const fvalue, const char* const efield, const char* const evalue) {
   std::function<bool(const student_t&)> predicate = get_filter(ffield, fvalue);
+  int count = 0;
   if (!predicate) {
     query_fail_bad_filter(fout, ffield, fvalue);
     return;
@@ -33,62 +49,95 @@ void execute_update(FILE* fout, database_t* const db, const char* const ffield, 
   for (student_t& s : db->data) {
     if (predicate(s)) {
       updater(s);
+      count++;
     }
   }
+  string final_rep = " student(s) updated";
+  *fout = to_string(count) +final_rep;
 }
 
-void execute_insert(FILE* fout, database_t* const db, const char* const fname,
+void execute_insert(string *fout, database_t* const db, const char* const fname,
                     const char* const lname, const unsigned id, const char* const section,
                     const tm birthdate) {
   db->data.emplace_back();
   student_t *s = &db->data.back();
+  char buffer[428];
   s->id = id;
   snprintf(s->fname, sizeof(s->fname), "%s", fname);
   snprintf(s->lname, sizeof(s->lname), "%s", lname);
   snprintf(s->section, sizeof(s->section), "%s", section);
   s->birthdate = birthdate;
+  student_to_str(buffer, s, 428);
+  cout << buffer;
+  *fout = *fout + buffer;
 }
 
-void execute_delete(FILE* fout, database_t* const db, const char* const field,
+void execute_delete(string *fout, database_t* const db, const char* const field,
                     const char* const value) {
   std::function<bool(const student_t&)> predicate = get_filter(field, value);
+  int begin = db->data.size();
   if (!predicate) {
     query_fail_bad_filter(fout, field, value);
     return;
   }
   auto new_end = remove_if(db->data.begin(), db->data.end(), predicate);
   db->data.erase(new_end, db->data.end());
+  int end = begin - db->data.size();
+  string final_rep = " student(s) deleted";
+  *fout = to_string(end) +final_rep;
 }
 
 // parse_and_execute_* ////////////////////////////////////////////////////////
-void parse_and_execute_select(char fout[1024], database_t* db, const char* const query) {
-//void parse_and_execute_select(FILE* fout, database_t* db, const char* const query) {
+//marche
+void parse_and_execute_select(string *fout, database_t* db, const char* const query,mutex *read, mutex *write, mutex *general, int *rQ) {
   char ffield[32], fvalue[64];  // filter data
   int  counter;
+  printf("Parse here \n");
   if (sscanf(query, "select %31[^=]=%63s%n", ffield, fvalue, &counter) != 2) {
+    printf("bad format\n");
     query_fail_bad_format(fout, "select");
   } else if (static_cast<unsigned>(counter) < strlen(query)) {
     query_fail_too_long(fout, "select");
   } else {
+    printf("exec\n");
+    general->lock();
+    read->lock();
+    if (*rQ == 0){
+      write->lock();
+    }
+    //*rQ++;
+    *rQ = *rQ + 1;
+    general->unlock();
+    read->unlock();
     execute_select(fout, db, ffield, fvalue);
+    read->lock();
+    *rQ = *rQ - 1;
+    if (*rQ == 0){
+      write->unlock();
+    }
+    read->unlock();
   }
 }
-
-void parse_and_execute_update(FILE* fout, database_t* db, const char* const query) {
+//marche
+void parse_and_execute_update(string *fout, database_t* db, const char* const query,mutex *read, mutex *write, mutex *general, int *rQ) {
   char ffield[32], fvalue[64];  // filter data
   char efield[32], evalue[64];  // edit data
   int counter;
   if (sscanf(query, "update %31[^=]=%63s set %31[^=]=%63s%n", ffield, fvalue, efield, evalue,
              &counter) != 4) {
+    printf("bad query update\n");
     query_fail_bad_format(fout, "update");
   } else if (static_cast<unsigned>(counter) < strlen(query)) {
     query_fail_too_long(fout, "update");
   } else {
+    begin_lock(read, write, general);
     execute_update(fout, db, ffield, fvalue, efield, evalue);
+    write->unlock();
   }
 }
 
-void parse_and_execute_insert(FILE* fout, database_t* db, const char* const query) {
+//marche
+void parse_and_execute_insert(string *fout, database_t* db, const char* const query,mutex *read, mutex *write, mutex *general, int *rQ) {
   char      fname[64], lname[64], section[64], date[11];
   unsigned  id;
   tm        birthdate;
@@ -98,11 +147,13 @@ void parse_and_execute_insert(FILE* fout, database_t* db, const char* const quer
   } else if (static_cast<unsigned>(counter) < strlen(query)) {
     query_fail_too_long(fout, "insert");
   } else {
+    begin_lock(read, write, general);
     execute_insert(fout, db, fname, lname, id, section, birthdate);
+    write->unlock();
   }
 }
-
-void parse_and_execute_delete(FILE* fout, database_t* db, const char* const query) {
+//marche sauf pour le retour de réponse
+void parse_and_execute_delete(string *fout, database_t* db, const char* const query,mutex *read, mutex *write, mutex *general, int *rQ) {
   char ffield[32], fvalue[64]; // filter data
   int counter;
   if (sscanf(query, "delete %31[^=]=%63s%n", ffield, fvalue, &counter) != 2) {
@@ -110,19 +161,23 @@ void parse_and_execute_delete(FILE* fout, database_t* db, const char* const quer
   } else if (static_cast<unsigned>(counter) < strlen(query)) {
     query_fail_too_long(fout, "delete");
   } else {
+    begin_lock(read, write, general);
     execute_delete(fout, db, ffield, fvalue);
+    write->unlock();
   }
 }
 
-void parse_and_execute(FILE* fout, database_t* db, const char* const query) {
+void parse_and_execute(string *fout, database_t* db, const char* const query, mutex* read, mutex* write, mutex* general, int* rQ) {
+  //void parse_and_execute(FILE* fout, database_t* db, const char* const query) {
   if (strncmp("select", query, sizeof("select")-1) == 0) {
-    parse_and_execute_select(fout, db, query);
+    printf("enter in the parse_exec\n");
+    parse_and_execute_select(fout, db, query,read, write, general, rQ);
   } else if (strncmp("update", query, sizeof("update")-1) == 0) {
-    parse_and_execute_update(fout, db, query);
+    parse_and_execute_update(fout, db, query,read, write, general, rQ);
   } else if (strncmp("insert", query, sizeof("insert")-1) == 0) {
-    parse_and_execute_insert(fout, db, query);
+    parse_and_execute_insert(fout, db, query,read, write, general, rQ);
   } else if (strncmp("delete", query, sizeof("delete")-1) == 0) {
-    parse_and_execute_delete(fout, db, query);
+    parse_and_execute_delete(fout, db, query,read, write, general, rQ);
   } else {
     query_fail_bad_query_type(fout);
   }
@@ -130,26 +185,35 @@ void parse_and_execute(FILE* fout, database_t* db, const char* const query) {
 
 // query_fail_* ///////////////////////////////////////////////////////////////
 
-void query_fail_bad_query_type(FILE* const fouti) {
+void query_fail_bad_query_type(string *fout) {
+  string answ="Unknown query type";
+  *fout= answ;
 }
-/*
-void query_fail_bad_format(FILE* const fout, const char * const query_type) {
+void query_fail_bad_format(string *fout, const char * const query_type) {
+  printf("Bad format !!");
+  string answ="Syntax error in up " + (string)query_type;
+  *fout= answ;
+}
+void query_fail_too_long(string *fout, const char * const query_type) {
+  printf("Too long");
+  string answ="The query has to many char. !";
+  *fout= answ;
+}
+void query_fail_bad_filter(string *fout, const char* const field, const char* const filter) {
+  printf("%s and %s are bad filter", field, filter);
+  string answ="Syntax error: this field doesn't exist " + (string)field;
+  *fout= answ;
+}
+void query_fail_bad_update(string *fout, const char* const field, const char* const filter) {
+  printf("%s and %s are bad filter", field, filter);
+  //string end_answer = (string)field +(string)filter;
+  string answ="You can not apply ";
+  *fout= answ;
 }
 
-void query_fail_too_long(FILE* const fout, const char * const query_type) {
-}*/
-void query_fail_bad_format(char fout[1024], const char * const query_type) {
-
-}
-
-void query_fail_too_long(char fout[1024], const char * const query_type) {
-}
-
-
-//void query_fail_bad_filter(FILE* const fout, const char* const field, const char* const filter) {
-void query_fail_bad_filter(char fout[1024], const char* const field, const char* const filter) {
-}
-
-void query_fail_bad_update(FILE* const fout, const char* const field, const char* const filter) {
+void begin_lock(mutex* read, mutex* write, mutex* general){
+  general->lock();
+  write->lock();
+  general->unlock();
 }
 

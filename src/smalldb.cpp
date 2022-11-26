@@ -10,14 +10,16 @@
 #include <iostream>
 #include <pthread.h>
 #include "db.hpp"
+#include "queries.hpp"
 
 #define PORT 28772
 #define BUFFSIZE 1024
 #define SERVER_BACKLOG 15
-//just modify
+
 using namespace std;
 typedef struct sockaddr_in SA_IN;
 typedef struct sockaddr SA;
+int readLocker=0;
 
 #include <signal.h>
 
@@ -26,33 +28,44 @@ typedef struct sockaddr SA;
 
 int server_fd, client_socket, addr_size;
 const char *db_path = "../students.bin";
-database_t *db;
+database_t *db = (database_t*)malloc(sizeof(database_t));
+
+mutex readingA;
+mutex writingA;
+mutex generalAcess;
+int readerQ;
 
 SA_IN server_addr, client_addr;
 
-void init_socket(int *server_fd, int *new_socket);
+void init_socket(int *server_fd);
 void * thread_connection(void* p_client_socket);
 void handler(int signum);
-void reading(int client_socket,char buffer[BUFFSIZE], char answer[BUFFSIZE]);
+void handler_syn(int signum);
+bool reading(int client_socket,char buffer[BUFFSIZE], char answer[BUFFSIZE]);
+bool command_exist(const char* const buffer);
 
 
 int main(int argc, char const *argv[]) {
 
-	int count = 0;
 	if (argv[1]){
 		db_path = argv[1];
 	}
 
-	//db_load(db,db_path);
+	db_load(db,db_path);
 	signal(SIGPIPE, SIG_IGN);
+	signal(SIGUSR1, handler_syn);
   // Initialisation du socket
-	init_socket(&server_fd, &client_socket);
+	init_socket(&server_fd);
 	
 	struct sigaction action;
+	struct sigaction actionSync;
+	actionSync.sa_handler = handler_syn;
 	action.sa_handler = handler;
 	sigemptyset(&action.sa_mask);
 	action.sa_flags = 0;
+	actionSync.sa_flags=SA_RESTART;
 	sigaction(SIGINT, &action, NULL);
+	sigaction(SIGUSR1, &actionSync, NULL);
 	
 	
 	while (true){
@@ -64,11 +77,12 @@ int main(int argc, char const *argv[]) {
 		sigset_t mask;
 		sigemptyset(&mask);
 		sigaddset(&mask, SIGINT);
+		sigaddset(&mask, SIGUSR1);
 		sigprocmask(SIG_BLOCK, &mask, NULL);
 
 		pthread_t t;
 		int *pclient = (int*)malloc(sizeof(int));
-		*pclient = client_socket; 
+		*pclient = client_socket;
 		pthread_create(&t, NULL,thread_connection, pclient);
 
 		sigprocmask(SIG_UNBLOCK, &mask, NULL);
@@ -78,7 +92,7 @@ int main(int argc, char const *argv[]) {
 	return 0;
 }
 
-void init_socket(int *server_fd, int *new_socket){
+void init_socket(int *server_fd){
 	// Création d'un descripteur de fichier pour un socket
 	*server_fd = checked(socket(AF_INET, SOCK_STREAM, 0));
 	int opt = 1;
@@ -100,16 +114,17 @@ void * thread_connection(void* p_client_socket){
 	free(p_client_socket);
 	char buffer[BUFFSIZE];
 	char answer[BUFFSIZE];
-	char buffer_w[] = "received";
-	size_t bytes_read;
-	int msgsize = 0;
-
 
 	while (true){
-		reading(client_socket, buffer, answer);
+		if(reading(client_socket, buffer, answer)!=true){
+			close(client_socket);
+			return NULL;
+		}
 		//if(send(client_socket, buffer_w, strlen(buffer_w)+1, 0)<0){
 		if(send(client_socket, answer, strlen(answer)+1, 0)<0){
-			printf("Client (%d) disconnected (normal). Closing connection and thread\n", client_socket);
+			printf("smalldb: Lost connection to client (%d)\n", client_socket);
+			printf("smalldb: closing connection %d\n", client_socket);
+			printf("smalldb: closing thread for connection %d\n", client_socket);
 			close(client_socket);
 			return NULL;
 		}
@@ -122,35 +137,54 @@ void * thread_connection(void* p_client_socket){
 void handler(int signum) {
 	printf("\nSignal %d received\n", signum);
 	//db.save();
-	close(server_fd);
 	close(client_socket);
+	close(server_fd);
+}
+void handler_syn(int signum){
+	printf("\nSignal %d received\n", signum);
+	//db.save();
 }
 
-void reading(int client_socket,char buffer[BUFFSIZE], char answer[BUFFSIZE]){
+bool reading(int client_socket,char buffer[BUFFSIZE], char answer[BUFFSIZE]){
 	int lu;
-	if(lu = read(client_socket, buffer, 1024)<0){
+	string text="";
+	if((lu = read(client_socket, buffer, 1024))<0){
 		printf("Failed !\n");
+	}
+	if (strncmp("exit", buffer, strlen("exit")-1)==0){
+		printf("smalldb: Client (%d) disconnected (normal). Closing connection and thread\n", client_socket);
+		return false;
 	}
 	buffer[strlen(buffer)-1] = 0;
 	printf("Querry: %s\n", buffer);
 
-	if(strncmp("select", buffer, strlen("select")-1)==0){
-		printf("select find\n");
-	}
-	else if(strncmp("update", buffer, strlen("update")-1)==0){
-		printf("update find\n");
-	}
-	else if(strncmp("insert", buffer, strlen("insert")-1)==0){
-		printf("insert find\n");
-	}
-	else if(strncmp("delete", buffer, strlen("delete")-1)==0){
-		printf("delete find\n");
+	if(command_exist(buffer)){
+		parse_and_execute(&text, db, buffer, &readingA, &writingA, &generalAcess, &readerQ);
+		strcpy(answer, text.c_str());
+		printf("%s", answer);
 	}
 	else{
-		printf("Unknown query type.");
 		strcpy(answer, "Unknown query type");
 	}
+	return true;
+}
 
+bool command_exist(const char* const buffer){
+	if(strncmp("select", buffer, strlen("select")-1)==0){
+		return true;
+	}
+	else if(strncmp("update", buffer, strlen("update")-1)==0){
+		return true;
+	}
+	else if(strncmp("insert", buffer, strlen("insert")-1)==0){
+		return true;
+	}
+	else if(strncmp("delete", buffer, strlen("delete")-1)==0){
+		return true;
+	}
+	else{
+		return false;
+	}
 }
 /*
 void parse_and_execute_select(FILE* fout, database_t* db, const char* const query);

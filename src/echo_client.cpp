@@ -34,23 +34,29 @@ int main(int argc, char const *argv[]) {
   char buffer[1024];
   int longueur, i, ret;
   while (true){
+    if (isatty(fileno(stdin))){ // detect if the stdin is a file or a terminal
+      printf("> ");
+    }
   	if (fgets(buffer, 1024, stdin) != NULL) {
      	longueur = strlen(buffer) + 1;
-     	printf("Envoi...\n");
      	checked_wr(write(sock, buffer, strlen(buffer) + 1));
      
+      if(strncmp(buffer,"exit",strlen("exit")-1)==0){
+        close(sock);
+        return 0;
+      }
      // Pour rappel, nous utilisons des sockets en mode
      // SOCK_STREAM. Par conséquent, il n'y a pas de
      // garanties sur le fait qu'un message implique
      // exactement une réception (plusieurs pourraient
      // être nécessaires). Il faut donc boucler sur read().
      	char msg[25];
-     	recv(sock, &msg, 26, 0);
+     	recv(sock, &msg, 1024, 0);
      
-     	printf("Recu : %s\n", msg);
-  	}
+     	printf("%s\n", msg);
+    }
+    else{
+      break;
+    }
   }
-  
-  close(sock);
-  return 0;
 }
