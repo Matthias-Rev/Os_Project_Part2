@@ -15,6 +15,3 @@ smalldb: echo_client.cpp smalldb.cpp db.o student.o queries.o
 	$(CXX) -o smalldb smalldb.cpp db.o student.o queries.o $(CXXFLAGS) -lpthread
 	$(CXX) -o sdbsh echo_client.cpp $(CXXFLAGS)
 
-clean:
-	rm *.o
-

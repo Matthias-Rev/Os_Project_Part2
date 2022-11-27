@@ -44,11 +44,11 @@ void handler_syn(int signum);
 bool reading(int client_socket,char buffer[BUFFSIZE], char answer[BUFFSIZE]);
 bool command_exist(const char* const buffer);
 
-
 int main(int argc, char const *argv[]) {
 
-	if (argv[1]){
+	if (argv[1] && argc!=0){
 		db_path = argv[1];
+		printf("%s", db_path);
 	}
 
 	db_load(db,db_path);

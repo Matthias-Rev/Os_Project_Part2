@@ -83,7 +83,7 @@ void execute_delete(string *fout, database_t* const db, const char* const field,
   auto new_end = remove_if(db->data.begin(), db->data.end(), predicate);
   db->data.erase(new_end, db->data.end());
   int end = begin - db->data.size();
-  string final_rep = " student(s) deleted";
+  string final_rep = " deleted student(s)";
   *fout = to_string(end) +final_rep;
 }
 
@@ -119,7 +119,7 @@ void parse_and_execute_select(string *fout, database_t* db, const char* const qu
   }
 }
 //marche
-void parse_and_execute_update(string *fout, database_t* db, const char* const query,mutex *read, mutex *write, mutex *general, int *rQ) {
+void parse_and_execute_update(string *fout, database_t* db, const char* const query, mutex *write, mutex *general) {
   char ffield[32], fvalue[64];  // filter data
   char efield[32], evalue[64];  // edit data
   int counter;
@@ -130,14 +130,14 @@ void parse_and_execute_update(string *fout, database_t* db, const char* const qu
   } else if (static_cast<unsigned>(counter) < strlen(query)) {
     query_fail_too_long(fout, "update");
   } else {
-    begin_lock(read, write, general);
+    begin_lock(write, general);
     execute_update(fout, db, ffield, fvalue, efield, evalue);
     write->unlock();
   }
 }
 
 //marche
-void parse_and_execute_insert(string *fout, database_t* db, const char* const query,mutex *read, mutex *write, mutex *general, int *rQ) {
+void parse_and_execute_insert(string *fout, database_t* db, const char* const query, mutex *write, mutex *general) {
   char      fname[64], lname[64], section[64], date[11];
   unsigned  id;
   tm        birthdate;
@@ -147,13 +147,13 @@ void parse_and_execute_insert(string *fout, database_t* db, const char* const qu
   } else if (static_cast<unsigned>(counter) < strlen(query)) {
     query_fail_too_long(fout, "insert");
   } else {
-    begin_lock(read, write, general);
+    begin_lock(write, general);
     execute_insert(fout, db, fname, lname, id, section, birthdate);
     write->unlock();
   }
 }
 //marche sauf pour le retour de réponse
-void parse_and_execute_delete(string *fout, database_t* db, const char* const query,mutex *read, mutex *write, mutex *general, int *rQ) {
+void parse_and_execute_delete(string *fout, database_t* db, const char* const query, mutex *write, mutex *general) {
   char ffield[32], fvalue[64]; // filter data
   int counter;
   if (sscanf(query, "delete %31[^=]=%63s%n", ffield, fvalue, &counter) != 2) {
@@ -161,7 +161,7 @@ void parse_and_execute_delete(string *fout, database_t* db, const char* const qu
   } else if (static_cast<unsigned>(counter) < strlen(query)) {
     query_fail_too_long(fout, "delete");
   } else {
-    begin_lock(read, write, general);
+    begin_lock(write, general);
     execute_delete(fout, db, ffield, fvalue);
     write->unlock();
   }
@@ -173,11 +173,11 @@ void parse_and_execute(string *fout, database_t* db, const char* const query, mu
     printf("enter in the parse_exec\n");
     parse_and_execute_select(fout, db, query,read, write, general, rQ);
   } else if (strncmp("update", query, sizeof("update")-1) == 0) {
-    parse_and_execute_update(fout, db, query,read, write, general, rQ);
+    parse_and_execute_update(fout, db, query, write, general);
   } else if (strncmp("insert", query, sizeof("insert")-1) == 0) {
-    parse_and_execute_insert(fout, db, query,read, write, general, rQ);
+    parse_and_execute_insert(fout, db, query, write, general);
   } else if (strncmp("delete", query, sizeof("delete")-1) == 0) {
-    parse_and_execute_delete(fout, db, query,read, write, general, rQ);
+    parse_and_execute_delete(fout, db, query, write, general);
   } else {
     query_fail_bad_query_type(fout);
   }
@@ -196,7 +196,7 @@ void query_fail_bad_format(string *fout, const char * const query_type) {
 }
 void query_fail_too_long(string *fout, const char * const query_type) {
   printf("Too long");
-  string answ="The query has to many char. !";
+  string answ="The " + (string)query_type +"has to many char. !";
   *fout= answ;
 }
 void query_fail_bad_filter(string *fout, const char* const field, const char* const filter) {
@@ -211,7 +211,7 @@ void query_fail_bad_update(string *fout, const char* const field, const char* co
   *fout= answ;
 }
 
-void begin_lock(mutex* read, mutex* write, mutex* general){
+void begin_lock(mutex* write, mutex* general){
   general->lock();
   write->lock();
   general->unlock();

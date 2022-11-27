@@ -27,11 +27,11 @@ void parse_and_execute_select(std::string *fout, database_t* db, const char* con
 
 //void parse_and_execute(std::string *text, database_t* db,const char* const query);
 void parse_and_execute(std::string *fout, database_t* db, const char* const query, std::mutex* read, std::mutex* write, std::mutex* general, int* rQ);
-void parse_and_execute_update(std::string *fout, database_t* db, const char* const query,std::mutex* read, std::mutex* write, std::mutex* general, int* rQ);
+void parse_and_execute_update(std::string *fout, database_t* db, const char* const query, std::mutex* write, std::mutex* general);
 
-void parse_and_execute_insert(std::string *fout, database_t* db, const char* const query,std::mutex* read, std::mutex* write, std::mutex* general, int* rQ);
+void parse_and_execute_insert(std::string *fout, database_t* db, const char* const query, std::mutex* write, std::mutex* general);
 
-void parse_and_execute_delete(std::string *fout, database_t* db, const char* const query,std::mutex* read, std::mutex* write, std::mutex* general, int* rQ);
+void parse_and_execute_delete(std::string *fout, database_t* db, const char* const query, std::mutex* write, std::mutex* general);
 
 // query_fail_* ///////////////////////////////////////////////////////////////
 
@@ -49,6 +49,6 @@ void query_fail_bad_update(std::string *const fout, const char* const field, con
 
 // mutex function///////////////////////////////////////////////////////////////
 
-void begin_lock(std::mutex* read, std::mutex* write, std::mutex* general);
+void begin_lock(std::mutex* write, std::mutex* general);
 
 #endif

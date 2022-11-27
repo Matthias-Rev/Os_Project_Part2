@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/socket.h>
-#include <unistd.h>
+#include <unistd.h>-
 
 // Permet de définir un gestionnaire de signaux pour SIGPIPE,
 // ce qui évite une fermeture abrupte du programme à la réception
@@ -16,7 +16,7 @@ int main(int argc, char const *argv[]) {
   // Permet que write() retourne 0 en cas de réception
   // du signal SIGPIPE.
   signal(SIGPIPE, SIG_IGN);
-  if (argv[1]){
+  if (argv[1] && argc != 0){
   	PORT = argv[1];
   }
   
@@ -32,13 +32,13 @@ int main(int argc, char const *argv[]) {
   checked(connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)));
   
   char buffer[1024];
-  int longueur, i, ret;
+  //int longueur = 0;
   while (true){
     if (isatty(fileno(stdin))){ // detect if the stdin is a file or a terminal
       printf("> ");
     }
   	if (fgets(buffer, 1024, stdin) != NULL) {
-     	longueur = strlen(buffer) + 1;
+     	//longueur = strlen(buffer) + 1;
      	checked_wr(write(sock, buffer, strlen(buffer) + 1));
      
       if(strncmp(buffer,"exit",strlen("exit")-1)==0){

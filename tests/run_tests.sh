@@ -13,9 +13,9 @@ fi
 
 for f in queries/*.txt ; do
     echo -e "\n>>> copie la BDD"
-    db="data/$(date -Ins).bin"
+    db="./data/$(date "%m-%d-%y").bin"
     cp data/test_db.bin "${db}"
-
+#-Ins
     echo ">>> lance le serveur"
     ../src/smalldb "${db}" &
     if ! pidof -q smalldb ; then

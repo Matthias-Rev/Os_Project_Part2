@@ -19,7 +19,6 @@ void db_load(database_t *db, const char *path) {
   // Ouvrir le fichier et déterminer sa taille
   struct stat info;
   int fd_db = open(path, O_RDONLY);
-
   if (fd_db < 0) {
     warn("Unable to open %s (loading DB)", path);
     warnx("Starting with an empty DB.");
@@ -56,10 +55,11 @@ void db_load(database_t *db, const char *path) {
     }
     std::cout << s.id;
     db->data.push_back(std::move(s));
+    /*
     if(i > 10){
       printf("Finished");
       break;
-    }
+    }*/
   }
 
   // smalldb: DB loaded (/tmp/test_db.bin): 9 students in database
