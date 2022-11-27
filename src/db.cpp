@@ -53,13 +53,7 @@ void db_load(database_t *db, const char *path) {
     if (static_cast<unsigned>(r) < sizeof(s)) {
       err(FILE_ERROR, "Corrupted DB file");
     }
-    std::cout << s.id;
     db->data.push_back(std::move(s));
-    /*
-    if(i > 10){
-      printf("Finished");
-      break;
-    }*/
   }
 
   // smalldb: DB loaded (/tmp/test_db.bin): 9 students in database

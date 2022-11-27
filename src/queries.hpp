@@ -23,15 +23,12 @@ void execute_insert(std::string *fout, database_t* const db, const char* const f
 void execute_dump(std::string *fout, database_t* const db);
 
 // parse_and_execute_* ////////////////////////////////////////////////////////
+
 void parse_and_execute_select(std::string *fout, database_t* db, const char* const query,std::mutex *read, std::mutex *write, std::mutex *general, int *rQ);
 
 void parse_and_execute(std::string *fout, database_t* db, const char* const query, std::mutex* read, std::mutex* write, std::mutex* general, int* rQ);
-<<<<<<< HEAD
-void parse_and_execute_update(std::string *fout, database_t* db, const char* const query, std::mutex* write, std::mutex* general);
-=======
 
-void parse_and_execute_update(std::string *fout, database_t* db, const char* const query,std::mutex* read, std::mutex* write, std::mutex* general, int* rQ);
->>>>>>> db7bea6 (Modif on queries)
+void parse_and_execute_update(std::string *fout, database_t* db, const char* const query, std::mutex* write, std::mutex* general);
 
 void parse_and_execute_insert(std::string *fout, database_t* db, const char* const query, std::mutex* write, std::mutex* general);
 

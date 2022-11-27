@@ -3,9 +3,6 @@
 #include <string>
 #include <iostream>
 using namespace std;
-//#include "io.hpp"
-
-// compile with g++ -c queries.cpp -std=c++11
 
 // execute_* ///////////////////////////////////////////////////////////////////
 
@@ -16,7 +13,6 @@ void execute_select(string *fout, database_t* const db, const char* const field,
   size_t buffersize = 428;
   std::function<bool(const student_t&)> predicate = get_filter(field, value);
   if (!predicate) {
-    printf("bad filter\n");
     query_fail_bad_filter(fout, field, value);
     return;
   }
@@ -26,7 +22,6 @@ void execute_select(string *fout, database_t* const db, const char* const field,
       char buffer[428];
       student_to_str(buffer, &s, buffersize);
       found_w = found_w + (string)buffer + "\n";
-      printf("the text is %s", found_w.c_str());
     }
   }
   string final_rep = " student(s) selected";
@@ -88,43 +83,39 @@ void execute_delete(string *fout, database_t* const db, const char* const field,
 }
 
 // parse_and_execute_* ////////////////////////////////////////////////////////
-//marche
+
 void parse_and_execute_select(string *fout, database_t* db, const char* const query,mutex *read, mutex *write, mutex *general, int *rQ) {
   char ffield[32], fvalue[64];  // filter data
   int  counter;
-  printf("Parse here \n");
   if (sscanf(query, "select %31[^=]=%63s%n", ffield, fvalue, &counter) != 2) {
-    printf("bad format\n");
     query_fail_bad_format(fout, "select");
   } else if (static_cast<unsigned>(counter) < strlen(query)) {
     query_fail_too_long(fout, "select");
   } else {
-    printf("exec\n");
-    general->lock(); //permet de lock le mutex géneral
-    read->lock(); //permet de lock le read
-    if (*rQ == 0){ // nous permet d'éviter la famine du à plusieur écriture
-      write->lock(); //si y a aucune lecture qui a été fait recemment on bloque les écritures
+    general->lock();          //permet de lock le mutex géneral
+    read->lock();             //permet de lock le read
+    if (*rQ == 0){            // nous permet d'éviter la famine du à plusieur écriture
+      write->lock();          //si y a aucune lecture qui a été faite recemment on bloque les écritures
     }
-    *rQ = *rQ + 1;// on ajout une lecture au int
-    general->unlock(); // on unlock le general
-    read->unlock(); //on unlock la lecture pour permettre à un autre read de lire la db
+    *rQ = *rQ + 1;            // on ajoute une lecture au int
+    general->unlock();        // on unlock le general
+    read->unlock();           // on unlock la lecture pour permettre à un autre read de lire la db
     execute_select(fout, db, ffield, fvalue);
-    read->lock(); // on lock la lecture pour permettre de soustraire le int
+    read->lock();             // on lock la lecture pour permettre de soustraire le int
     *rQ = *rQ - 1;
-    if (*rQ == 0){ //est ce qu'il reste une lecture ?
-      write->unlock(); // si il en reste plus alors on debloque l'écriture
+    if (*rQ == 0){            //est ce qu'il reste une lecture ?
+      write->unlock();        // si il en reste plus alors on debloque l'écriture
     }
-    read->unlock(); //on rend la main sur la lecture
+    read->unlock();           //on rend la main sur la lecture
   }
 }
-//marche
+
 void parse_and_execute_update(string *fout, database_t* db, const char* const query, mutex *write, mutex *general) {
   char ffield[32], fvalue[64];  // filter data
   char efield[32], evalue[64];  // edit data
   int counter;
   if (sscanf(query, "update %31[^=]=%63s set %31[^=]=%63s%n", ffield, fvalue, efield, evalue,
              &counter) != 4) {
-    printf("bad query update\n");
     query_fail_bad_format(fout, "update");
   } else if (static_cast<unsigned>(counter) < strlen(query)) {
     query_fail_too_long(fout, "update");
@@ -135,7 +126,6 @@ void parse_and_execute_update(string *fout, database_t* db, const char* const qu
   }
 }
 
-//marche
 void parse_and_execute_insert(string *fout, database_t* db, const char* const query, mutex *write, mutex *general) {
   char      fname[64], lname[64], section[64], date[11];
   unsigned  id;
@@ -151,7 +141,7 @@ void parse_and_execute_insert(string *fout, database_t* db, const char* const qu
     write->unlock();
   }
 }
-//marche sauf pour le retour de réponse
+
 void parse_and_execute_delete(string *fout, database_t* db, const char* const query, mutex *write, mutex *general) {
   char ffield[32], fvalue[64]; // filter data
   int counter;
@@ -169,7 +159,6 @@ void parse_and_execute_delete(string *fout, database_t* db, const char* const qu
 void parse_and_execute(string *fout, database_t* db, const char* const query, mutex* read, mutex* write, mutex* general, int* rQ) {
   //void parse_and_execute(FILE* fout, database_t* db, const char* const query) {
   if (strncmp("select", query, sizeof("select")-1) == 0) {
-    printf("enter in the parse_exec\n");
     parse_and_execute_select(fout, db, query,read, write, general, rQ);
   } else if (strncmp("update", query, sizeof("update")-1) == 0) {
     parse_and_execute_update(fout, db, query, write, general);
@@ -189,23 +178,19 @@ void query_fail_bad_query_type(string *fout) {
   *fout= answ;
 }
 void query_fail_bad_format(string *fout, const char * const query_type) {
-  printf("Bad format !!");
   string answ="Syntax error in up " + (string)query_type;
   *fout= answ;
 }
 void query_fail_too_long(string *fout, const char * const query_type) {
-  printf("Too long");
   string answ="The " + (string)query_type +"has to many char. !";
   *fout= answ;
 }
 void query_fail_bad_filter(string *fout, const char* const field, const char* const filter) {
-  printf("%s and %s are bad filter", field, filter);
   string answ="Syntax error: this field doesn't exist " + (string)field;
   *fout= answ;
 }
 void query_fail_bad_update(string *fout, const char* const field, const char* const filter) {
   printf("%s and %s are bad filter", field, filter);
-  //string end_answer = (string)field +(string)filter;
   string answ="You can not apply ";
   *fout= answ;
 }
