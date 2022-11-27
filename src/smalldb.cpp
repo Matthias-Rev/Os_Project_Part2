@@ -30,7 +30,7 @@ int server_fd, client_socket, addr_size;
 const char *db_path = "../students.bin";
 database_t *db = (database_t*)malloc(sizeof(database_t));
 
-mutex readingA;
+mutex readingA;	//permet de lock la db pour l'écriture/lecture
 mutex writingA;
 mutex generalAcess;
 int readerQ;
@@ -52,7 +52,7 @@ int main(int argc, char const *argv[]) {
 	}
 
 	db_load(db,db_path);
-	signal(SIGPIPE, SIG_IGN);
+	signal(SIGPIPE, SIG_IGN); //handling les signaux
 	signal(SIGUSR1, handler_syn);
   // Initialisation du socket
 	init_socket(&server_fd);
@@ -63,7 +63,7 @@ int main(int argc, char const *argv[]) {
 	action.sa_handler = handler;
 	sigemptyset(&action.sa_mask);
 	action.sa_flags = 0;
-	actionSync.sa_flags=SA_RESTART;
+	actionSync.sa_flags=SA_RESTART; //permet de continuer la fonction après le signal USR1
 	sigaction(SIGINT, &action, NULL);
 	sigaction(SIGUSR1, &actionSync, NULL);
 	

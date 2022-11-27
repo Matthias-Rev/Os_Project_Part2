@@ -100,22 +100,21 @@ void parse_and_execute_select(string *fout, database_t* db, const char* const qu
     query_fail_too_long(fout, "select");
   } else {
     printf("exec\n");
-    general->lock();
-    read->lock();
-    if (*rQ == 0){
-      write->lock();
+    general->lock(); //permet de lock le mutex géneral
+    read->lock(); //permet de lock le read
+    if (*rQ == 0){ // nous permet d'éviter la famine du à plusieur écriture
+      write->lock(); //si y a aucune lecture qui a été fait recemment on bloque les écritures
     }
-    //*rQ++;
-    *rQ = *rQ + 1;
-    general->unlock();
-    read->unlock();
+    *rQ = *rQ + 1;// on ajout une lecture au int
+    general->unlock(); // on unlock le general
+    read->unlock(); //on unlock la lecture pour permettre à un autre read de lire la db
     execute_select(fout, db, ffield, fvalue);
-    read->lock();
+    read->lock(); // on lock la lecture pour permettre de soustraire le int
     *rQ = *rQ - 1;
-    if (*rQ == 0){
-      write->unlock();
+    if (*rQ == 0){ //est ce qu'il reste une lecture ?
+      write->unlock(); // si il en reste plus alors on debloque l'écriture
     }
-    read->unlock();
+    read->unlock(); //on rend la main sur la lecture
   }
 }
 //marche
