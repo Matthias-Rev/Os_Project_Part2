@@ -50,6 +50,7 @@ int main(int argc, char const *argv[]) {
 		db_path = argv[1];
 	}
 
+	
 	db_load(db,db_path);					//initialise la database en fonction de l'argument donné
 	signal(SIGPIPE, SIG_IGN); 				//permet de changer la fonction par défaut d'un signal
 	signal(SIGUSR1, handler_syn);			//idem
