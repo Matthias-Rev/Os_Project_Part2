@@ -78,7 +78,7 @@ void execute_delete(string *fout, database_t* const db, const char* const field,
   auto new_end = remove_if(db->data.begin(), db->data.end(), predicate);
   db->data.erase(new_end, db->data.end());
   int end = begin - db->data.size();
-  string final_rep = " deleted student(s)";
+  string final_rep = " student(s) deleted";
   *fout = to_string(end) +final_rep;
 }
 
