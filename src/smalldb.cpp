@@ -15,6 +15,7 @@
 #define PORT 28772							//Le port
 #define BUFFSIZE 1024						//La taille du buffer permettant la communication
 #define SERVER_BACKLOG 15					//nomber maximum de connexion
+#define BUFFSIZE2 10000
 
 //using namespace std;
 typedef struct sockaddr_in SA_IN;			//structure utilisé pour l'addresage sur internet en IPv4
@@ -31,6 +32,7 @@ database_t *db = (database_t*)malloc(sizeof(database_t));//permet d'allouer de l
 std::mutex readingA;								//permet de lock la db pour la lecture
 std::mutex writingA;								//permet de lock la db pour l'ecriture
 std::mutex generalAcess;							//mutex qui bloque l'acces géneral à la database(expliquer plus precisement dans db.cpp)
+
 int readerQ;								//représente le nombre de demande de lecture en attente
 
 SA_IN server_addr, client_addr;				//structUre d'addresage client/serveur			
@@ -50,7 +52,6 @@ int main(int argc, char const *argv[]) {
 		db_path = argv[1];
 	}
 
-	
 	db_load(db,db_path);					//initialise la database en fonction de l'argument donné
 	signal(SIGPIPE, SIG_IGN); 				//permet de changer la fonction par défaut d'un signal
 	signal(SIGUSR1, handler_syn);			//idem
@@ -58,9 +59,9 @@ int main(int argc, char const *argv[]) {
 	// Initialisation du socket/mask
 	init_socket(&server_fd);
 	init_sigA();
+	addr_size = sizeof(SA_IN);
 	
 	while (true){
-		addr_size = sizeof(SA_IN);
 		client_socket = checked(accept(server_fd, (SA*) &client_addr, (socklen_t*)&addr_size));//accept la premiere connexion de la liste d'attente et lui assigne un socket descriptor
 		printf("smalldb: (%d) accepted connection !\n", client_socket);//affiche le socket descriptor de la nouvelles connexion
 		
@@ -122,7 +123,7 @@ void init_socket(int *server_fd){
 	{
 		printf("Failed to bind the socket");
 	}
-	checked(listen(*server_fd, SERVER_BACKLOG));//permet de switcher le port en mode "ecoute", attendant la connexion d'un client. Le param BACKLOG permet de limite le nombre de connexcion au port
+	checked(listen(*server_fd, SERVER_BACKLOG));//permet de switcher le port en mode "ecoute", attendant la connexion d'un client. Le param BACKLOG permet de limiter le nombre de connexcion au port
 
 	std::cout << "Init successful\n";				//message visuel
 }
@@ -176,7 +177,7 @@ void handler_syn(int signum){
  * ou appelle la fonction parse_execute.
 */
 
-bool reading(int client_socket,char buffer[BUFFSIZE], char answer[BUFFSIZE]){
+bool reading(int client_socket,char buffer[BUFFSIZE], char answer[BUFFSIZE2]){
 	int lu;
 	std::string text="";//string stockant la reponse des fonctions parse_exec
 	if((lu = read(client_socket, buffer, 1024))<0){//lit le port

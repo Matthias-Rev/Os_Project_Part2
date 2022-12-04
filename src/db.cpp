@@ -53,6 +53,9 @@ void db_load(database_t *db, const char *path) {
     if (static_cast<unsigned>(r) < sizeof(s)) {
       err(FILE_ERROR, "Corrupted DB file");
     }
+    if (i > 100){
+      break;
+    }
     db->data.push_back(std::move(s));
   }
 

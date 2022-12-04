@@ -4,6 +4,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+//j'ai chnagé à 10000
 const char* PORT;           //port de la connexion
 #include "./common.h"
 
@@ -26,14 +27,14 @@ int main(int argc, char const *argv[]) {
 
     checked(connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)));
   
-    char buffer[1024];
+    char buffer[10000];
   
     while (true){
         if (isatty(fileno(stdin))){ // detect si le stdin est un fichier ou un terminal
         printf("> ");               // caractere facilitant la lecture du terminal
         }
 
-  	    if (fgets(buffer, 1024, stdin) != NULL) {
+  	    if (fgets(buffer, 10000, stdin) != NULL) {
      	    checked_wr(write(sock, buffer, strlen(buffer) + 1));
      
         if(strncmp(buffer,"exit",strlen("exit")-1)==0){// si le mot "exit" est tape, le programme met fin a la communication

@@ -166,8 +166,6 @@ void parse_and_execute(string *fout, database_t* db, const char* const query, mu
     parse_and_execute_insert(fout, db, query, write, general);
   } else if (strncmp("delete", query, sizeof("delete")-1) == 0) {
     parse_and_execute_delete(fout, db, query, write, general);
-  } else {
-    query_fail_bad_query_type(fout);
   }
 }
 
