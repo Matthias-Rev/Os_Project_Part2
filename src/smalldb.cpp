@@ -162,12 +162,14 @@ void * thread_connection(void* p_client_socket){
  * la redefinition des fonctions par defaut des signaux SIGINT/SIGUSR1
 */
 void handler(int signum) {
+	printf("Signal reçu ‰d", signum);
 	db_save(db);
 	close(client_socket);
 	close(server_fd);
 }
 
 void handler_syn(int signum){
+	printf("Signal reçu ‰d", signum);
 	db_save(db);
 }
 
