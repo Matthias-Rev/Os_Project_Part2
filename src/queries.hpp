@@ -44,7 +44,7 @@ void query_fail_bad_format(std::string *const fout, const char* const query_type
 
 void query_fail_too_long(std::string *const fout, const char* const query_type);
 
-void query_fail_bad_filter(std::string *const fout, const char* const field, const char* const filter);
+void query_fail_bad_filter(std::string *const fout, const char* const filter);
 
 void query_fail_bad_update(std::string *const fout, const char* const field, const char* const filter);
 

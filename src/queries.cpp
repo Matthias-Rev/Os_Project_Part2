@@ -183,8 +183,8 @@ void query_fail_too_long(string *fout, const char * const query_type) {
   string answ="The " + (string)query_type +"has to many char. !";
   *fout= answ;
 }
-void query_fail_bad_filter(string *fout, const char* const field, const char* const filter) {
-  string answ="Syntax error: this field doesn't exist " + (string)field;
+void query_fail_bad_filter(string *fout, const char* const filter) {
+  string answ="Syntax error: this filter doesn't exist " + (string)filter;
   *fout= answ;
 }
 void query_fail_bad_update(string *fout, const char* const field, const char* const filter) {
