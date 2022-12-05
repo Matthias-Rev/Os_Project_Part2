@@ -13,7 +13,7 @@ void execute_select(string *fout, database_t* const db, const char* const field,
   size_t buffersize = 428;
   std::function<bool(const student_t&)> predicate = get_filter(field, value);
   if (!predicate) {
-    query_fail_bad_filter(fout, field, value);
+    query_fail_bad_filter(fout, value);
     return;
   }
   for (const student_t& s : db->data) {
@@ -33,7 +33,7 @@ void execute_update(string *fout, database_t* const db, const char* const ffield
   std::function<bool(const student_t&)> predicate = get_filter(ffield, fvalue);
   int count = 0;
   if (!predicate) {
-    query_fail_bad_filter(fout, ffield, fvalue);
+    query_fail_bad_filter(fout, fvalue);
     return;
   }
   std::function<void(student_t&)> updater = get_updater(efield, evalue);
@@ -72,7 +72,7 @@ void execute_delete(string *fout, database_t* const db, const char* const field,
   std::function<bool(const student_t&)> predicate = get_filter(field, value);
   int begin = db->data.size();
   if (!predicate) {
-    query_fail_bad_filter(fout, field, value);
+    query_fail_bad_filter(fout, value);
     return;
   }
   auto new_end = remove_if(db->data.begin(), db->data.end(), predicate);
