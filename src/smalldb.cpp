@@ -8,6 +8,7 @@
 #include <limits.h>
 #include <unistd.h>
 #include <iostream>
+#include <vector>
 #include <pthread.h>
 #include "db.hpp"
 #include "queries.hpp"
@@ -34,6 +35,7 @@ std::mutex writingA;								//permet de lock la db pour l'ecriture
 std::mutex generalAcess;							//mutex qui bloque l'acces géneral à la database(expliquer plus precisement dans db.cpp)
 
 int readerQ;								//représente le nombre de demande de lecture en attente
+std::vector<int> list_client;
 
 SA_IN server_addr, client_addr;				//structUre d'addresage client/serveur			
 
@@ -63,6 +65,7 @@ int main(int argc, char const *argv[]) {
 	
 	while (true){
 		client_socket = checked(accept(server_fd, (SA*) &client_addr, (socklen_t*)&addr_size));//accept la premiere connexion de la liste d'attente et lui assigne un socket descriptor
+		list_client.push_back(client_socket);
 		printf("smalldb: (%d) accepted connection !\n", client_socket);//affiche le socket descriptor de la nouvelles connexion
 		
 		// permet que seul le thread principal récupère le SIGINT/SIGUSR1
@@ -164,7 +167,9 @@ void * thread_connection(void* p_client_socket){
 void handler(int signum) {
 	printf("Signal reçu %d", signum);
 	db_save(db);
-	close(client_socket);
+	for(int i : list_client) {
+		close(i);
+	}
 	close(server_fd);
 }
 
