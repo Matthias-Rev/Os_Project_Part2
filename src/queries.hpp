@@ -9,7 +9,7 @@
 
 // execute_* //////////////////////////////////////////////////////////////////
 void execute_select(std::string *fout, database_t* const db, const char* const field,
-                    const char* const value);
+                    const char* const value, int socket);
 void execute_select(std::string *fout, database_t* const db, const char* const field,
                     const char* const value);
 
@@ -24,9 +24,9 @@ void execute_dump(std::string *fout, database_t* const db);
 
 // parse_and_execute_* ////////////////////////////////////////////////////////
 
-void parse_and_execute_select(std::string *fout, database_t* db, const char* const query,std::mutex *read, std::mutex *write, std::mutex *general, int *rQ);
+void parse_and_execute_select(std::string *fout, database_t* db, const char* const query,std::mutex *read, std::mutex *write, std::mutex *general, int *rQ, int socket);
 
-void parse_and_execute(std::string *fout, database_t* db, const char* const query, std::mutex* read, std::mutex* write, std::mutex* general, int* rQ);
+void parse_and_execute(std::string *fout, database_t* db, const char* const query, std::mutex* read, std::mutex* write, std::mutex* general, int* rQ, int socket);
 
 void parse_and_execute_update(std::string *fout, database_t* db, const char* const query, std::mutex* write, std::mutex* general);
 
@@ -51,5 +51,9 @@ void query_fail_bad_update(std::string *const fout, const char* const field, con
 // mutex function///////////////////////////////////////////////////////////////
 
 void begin_lock(std::mutex* write, std::mutex* general);
+
+// utils function///////////////////////////////////////////////////////////////
+
+void file_create(int socket, char *filename);
 
 #endif

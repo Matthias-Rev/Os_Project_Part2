@@ -29,10 +29,10 @@ fi
 if [ "$var1" = "sync" ]; then
 	echo "Sync process $smalldb..."
 	#envoie un signal permettant de sauvegarder la db
-	kill -SIGUSR1 $smalldb
+	kill -s -SIGUSR1 $smalldb
 fi
 if [ "$var1" = "stop" ]; then
 	echo "Stopping in progress...."
 	# Demande la confirmation de la supression
-	kill -SIGINT $smalldb
+	kill -s -SIGINT $smalldb
 fi

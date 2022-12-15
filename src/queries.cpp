@@ -2,14 +2,23 @@
 #include "student.hpp"
 #include <string>
 #include <iostream>
+#include <fstream>
 using namespace std;
 
 // execute_* ///////////////////////////////////////////////////////////////////
 
 void execute_select(string *fout, database_t* const db, const char* const field,
-                    const char* const value) {
+                    const char* const value, int socket) {
   string found_w = "";
+  char filename[512];
+  file_create(socket, filename);
+  printf("%s\n", filename);
+  std::ofstream file_select;// (filename);
+  file_select.open (filename, ios::out | ios::trunc);
   int count = 0;
+  if (file_select.is_open() != true){
+    perror("Error creating file select !");
+  }
   size_t buffersize = 428;
   std::function<bool(const student_t&)> predicate = get_filter(field, value);
   if (!predicate) {
@@ -21,12 +30,17 @@ void execute_select(string *fout, database_t* const db, const char* const field,
       count++;
       char buffer[428];
       student_to_str(buffer, &s, buffersize);
-      found_w = found_w + (string)buffer + "\n";
+      //found_w = (string)buffer + "\n";
+      file_select << buffer << "\n";
+      
     }
   }
-  string final_rep = " student(s) selected";
-  found_w = found_w + to_string(count) + final_rep;
-  *fout = found_w;
+  string final_rep = " student(s) selected/end";
+  file_select << to_string(count) << final_rep;
+  file_select.close();
+  //found_w = found_w + to_string(count) + final_rep;
+  //*fout = found_w;
+  std::cout << "Successfully sent !";
 }
 
 void execute_update(string *fout, database_t* const db, const char* const ffield, const char* const fvalue, const char* const efield, const char* const evalue) {
@@ -47,16 +61,22 @@ void execute_update(string *fout, database_t* const db, const char* const ffield
       count++;
     }
   }
-  string final_rep = " student(s) updated";
+  string final_rep = " student(s) updated/end";
   *fout = to_string(count) +final_rep;
 }
 
 void execute_insert(string *fout, database_t* const db, const char* const fname,
                     const char* const lname, const unsigned id, const char* const section,
                     const tm birthdate) {
+  char buffer[428];
+  for (student_t& student : db->data) {
+    if (student.id == id) {
+      strcpy(buffer, "The student already exists !/end");
+      break;
+    }
+  }
   db->data.emplace_back();
   student_t *s = &db->data.back();
-  char buffer[428];
   s->id = id;
   snprintf(s->fname, sizeof(s->fname), "%s", fname);
   snprintf(s->lname, sizeof(s->lname), "%s", lname);
@@ -64,7 +84,7 @@ void execute_insert(string *fout, database_t* const db, const char* const fname,
   s->birthdate = birthdate;
   student_to_str(buffer, s, 428);
   cout << buffer;
-  *fout = *fout + buffer;
+  *fout = *fout + buffer + "/end";
 }
 
 void execute_delete(string *fout, database_t* const db, const char* const field,
@@ -78,13 +98,13 @@ void execute_delete(string *fout, database_t* const db, const char* const field,
   auto new_end = remove_if(db->data.begin(), db->data.end(), predicate);
   db->data.erase(new_end, db->data.end());
   int end = begin - db->data.size();
-  string final_rep = " student(s) deleted";
+  string final_rep = " student(s) deleted/end";
   *fout = to_string(end) +final_rep;
 }
 
 // parse_and_execute_* ////////////////////////////////////////////////////////
 
-void parse_and_execute_select(string *fout, database_t* db, const char* const query,mutex *read, mutex *write, mutex *general, int *rQ) {
+void parse_and_execute_select(string *fout, database_t* db, const char* const query,mutex *read, mutex *write, mutex *general, int *rQ, int socket) {
   char ffield[32], fvalue[64];  // filter data
   int  counter;
   if (sscanf(query, "select %31[^=]=%63s%n", ffield, fvalue, &counter) != 2) {
@@ -100,7 +120,7 @@ void parse_and_execute_select(string *fout, database_t* db, const char* const qu
     *rQ = *rQ + 1;            // on ajoute une lecture au int
     general->unlock();        // on unlock le general
     read->unlock();           // on unlock la lecture pour permettre à un autre read de lire la db
-    execute_select(fout, db, ffield, fvalue);
+    execute_select(fout, db, ffield, fvalue, socket);
     read->lock();             // on lock la lecture pour permettre de soustraire le int
     *rQ = *rQ - 1;
     if (*rQ == 0){            //est ce qu'il reste une lecture ?
@@ -156,10 +176,10 @@ void parse_and_execute_delete(string *fout, database_t* db, const char* const qu
   }
 }
 
-void parse_and_execute(string *fout, database_t* db, const char* const query, mutex* read, mutex* write, mutex* general, int* rQ) {
+void parse_and_execute(string *fout, database_t* db, const char* const query, mutex* read, mutex* write, mutex* general, int* rQ, int socket) {
   //void parse_and_execute(FILE* fout, database_t* db, const char* const query) {
   if (strncmp("select", query, sizeof("select")-1) == 0) {
-    parse_and_execute_select(fout, db, query,read, write, general, rQ);
+    parse_and_execute_select(fout, db, query,read, write, general, rQ, socket);
   } else if (strncmp("update", query, sizeof("update")-1) == 0) {
     parse_and_execute_update(fout, db, query, write, general);
   } else if (strncmp("insert", query, sizeof("insert")-1) == 0) {
@@ -172,24 +192,24 @@ void parse_and_execute(string *fout, database_t* db, const char* const query, mu
 // query_fail_* ///////////////////////////////////////////////////////////////
 
 void query_fail_bad_query_type(string *fout) {
-  string answ="Unknown query type";
+  string answ="Unknown query type/end";
   *fout= answ;
 }
 void query_fail_bad_format(string *fout, const char * const query_type) {
-  string answ="Syntax error in up " + (string)query_type;
+  string answ="Syntax error in up " + (string)query_type + "/end";
   *fout= answ;
 }
 void query_fail_too_long(string *fout, const char * const query_type) {
-  string answ="The " + (string)query_type +"has to many char. !";
+  string answ="The " + (string)query_type +"has to many char. !" + "/end";
   *fout= answ;
 }
 void query_fail_bad_filter(string *fout, const char* const filter) {
-  string answ="Syntax error: this filter doesn't exist " + (string)filter;
+  string answ="Syntax error: this filter doesn't exist " + (string)filter + "/end";
   *fout= answ;
 }
 void query_fail_bad_update(string *fout, const char* const field, const char* const filter) {
   printf("%s and %s are bad filter", field, filter);
-  string answ="You can not apply ";
+  string answ="You can not apply /end";
   *fout= answ;
 }
 
@@ -199,3 +219,8 @@ void begin_lock(mutex* write, mutex* general){
   general->unlock();
 }
 
+void file_create(int socket, char filename[512]){
+  char type[100];
+  sprintf(type, "%d", socket);
+  sprintf(filename, "./file_select%s.txt", type);
+}

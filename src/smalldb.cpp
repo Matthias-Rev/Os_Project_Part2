@@ -16,7 +16,10 @@
 #define PORT 28772							//Le port
 #define BUFFSIZE 1024						//La taille du buffer permettant la communication
 #define SERVER_BACKLOG 15					//nomber maximum de connexion
-#define BUFFSIZE2 10000
+#define BUFFSIZE2 1024
+#define QUERY_SELECT 2
+#define QUERY_OTHER 1
+#define FAILED 0
 
 //using namespace std;
 typedef struct sockaddr_in SA_IN;			//structure utilisé pour l'addresage sur internet en IPv4
@@ -43,10 +46,10 @@ void init_socket(int *server_fd);			//permet d'initialiser le socket
 void * thread_connection(void* p_client_socket);//fonction utiliser par les threads (envoie, reception des messages)
 void handler(int signum);					//fonction du control C
 void handler_syn(int signum);				//fonction du SIGUSR1
-bool reading(int client_socket,char buffer[BUFFSIZE], char answer[BUFFSIZE]);//lecture du message reçu, et traitement de ce message par la db
-bool command_exist(const char* const buffer);//recherche si la command envoye existe
+bool reading(int client_socket,char buffer[BUFFSIZE], char answer[BUFFSIZE], int* query_type);//lecture du message reçu, et traitement de ce message par la db
+bool command_exist(const char* const buffer, int* query_type);//recherche si la command envoye existe
 void init_sigA();							//initialisation des mask
-
+bool sending(int client_socket, char answer[BUFFSIZE2], int query_type);
 
 int main(int argc, char const *argv[]) {
 
@@ -142,13 +145,14 @@ void * thread_connection(void* p_client_socket){
 	free(p_client_socket);						//libere la memoire alloue au pointeur
 	char buffer[BUFFSIZE];						//buffer contenant la requete
 	char answer[BUFFSIZE];						//buffer contenant la reponse du serveur
+	int query_type = 1;
 
 	while (true){
-		if(reading(client_socket, buffer, answer)!=true){//check si le client a ferme la connexion
+		if(reading(client_socket, buffer, answer, &query_type)==false){//check si le client a ferme la connexion
 			close(client_socket);// ferme le socket du client
 			return NULL;
 		}
-		if(send(client_socket, answer, strlen(answer)+1, 0)<0){//envoie la reponse du serveur
+		if(sending(client_socket, answer, query_type)==false){//envoie la reponse du serveur
 			printf("smalldb: Lost connection to client (%d)\n", client_socket);//si c'est un echec alors le client a subi un probleme fermant la connexion
 			printf("smalldb: closing connection %d\n", client_socket);
 			printf("smalldb: closing thread for connection %d\n", client_socket);
@@ -178,13 +182,44 @@ void handler_syn(int signum){
 	db_save(db);
 }
 
+bool sending(int client_socket, char answer[BUFFSIZE2], int query_type){
+	int count;
+	std::cout << query_type;
+	scanf("%d", &count);
+	if(query_type == QUERY_SELECT){
+		//ici
+		FILE *fp;
+		char filename[512];
+		file_create(client_socket, filename);
+    	fp = fopen(filename, "r");
+		char data[BUFFSIZE] = {0};
+		while(fgets(data, BUFFSIZE, fp) != NULL) {
+			std::cout << data;
+			if (send(client_socket, data, sizeof(data), 0) == -1) {
+				perror("[-]Error in sending file.");
+				return false;
+			}
+			bzero(data, BUFFSIZE);
+		}
+		fclose(fp);
+	}
+	else if(query_type == QUERY_OTHER){
+		if(send(client_socket, answer, strlen(answer)+1, 0)<0){
+			return false;
+		}
+	}
+	return true;
+}
+
+
+
 /*
  * Permet de lire le message envoye par un client, et de detecter une fin de connexion venant du client ("exit").
  * Execute command_exist.En fonction du resultat le serveur renvoie un msg d'erreur au client,
  * ou appelle la fonction parse_execute.
 */
 
-bool reading(int client_socket,char buffer[BUFFSIZE], char answer[BUFFSIZE2]){
+bool reading(int client_socket,char buffer[BUFFSIZE], char answer[BUFFSIZE2], int *query_type){
 	int lu;
 	std::string text="";//string stockant la reponse des fonctions parse_exec
 	if((lu = read(client_socket, buffer, 1024))<0){//lit le port
@@ -196,12 +231,13 @@ bool reading(int client_socket,char buffer[BUFFSIZE], char answer[BUFFSIZE2]){
 	}
 	buffer[strlen(buffer)-1] = 0;
 
-	if(command_exist(buffer)){//recherche si une command existante se trouve dans la requete
-		parse_and_execute(&text, db, buffer, &readingA, &writingA, &generalAcess, &readerQ);
+	if(command_exist(buffer, query_type)){//recherche si une command existante se trouve dans la requete
+		parse_and_execute(&text, db, buffer, &readingA, &writingA, &generalAcess, &readerQ, client_socket);
 		strcpy(answer, text.c_str());//copie la reponse dans answer afin de l'envoyer
 	}
 	else{
-		strcpy(answer, "Unknown query type");
+		*query_type = 1;
+		strcpy(answer, "Unknown query type/end");
 	}
 	return true;
 }
@@ -211,18 +247,22 @@ bool reading(int client_socket,char buffer[BUFFSIZE], char answer[BUFFSIZE2]){
  * La fonction parse la requete pour detecter si il y a la presence d'une commande connue.
  * Si c'est le cas la fonction renvoie true, sinon false.
 */
-bool command_exist(const char* const buffer){
+bool command_exist(const char* const buffer, int* query_type){
 
 	if(strncmp("select", buffer, strlen("select")-1)==0){
+		*query_type = 2;
 		return true;
 	}
 	else if(strncmp("update", buffer, strlen("update")-1)==0){
+		*query_type = 1;
 		return true;
 	}
 	else if(strncmp("insert", buffer, strlen("insert")-1)==0){
+		*query_type = 1;
 		return true;
 	}
 	else if(strncmp("delete", buffer, strlen("delete")-1)==0){
+		*query_type = 1;
 		return true;
 	}
 	else{
