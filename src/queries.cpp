@@ -207,7 +207,7 @@ void query_fail_bad_filter(string *fout, const char* const filter) {
   *fout= answ;
 }
 void query_fail_bad_update(string *fout, const char* const field, const char* const filter) {
-  string answ="You can not update /end";
+  string answ="You can not update with these values" + string(field) + string(filter) + "/end";
   *fout= answ;
 }
 

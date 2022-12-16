@@ -177,6 +177,7 @@ void * thread_connection(void* p_client_socket){
  * la redefinition des fonctions par defaut des signaux SIGINT/SIGUSR1
 */
 void handler(int signum) {
+	printf("Signal recieve %d", signum);
 	printf("\nWaiting for clients deconnection....\n");
 	deconnection = true;							//empeche d'accepter d'autre client durant la fermeture du serveur
 	while(list_client.size()!=0){;					//attend que chaques clients se déconnectent
@@ -186,6 +187,7 @@ void handler(int signum) {
 }
 
 void handler_syn(int signum){
+	printf("Signal recieve %d", signum);
 	printf("Saving the database...");
 	db_save(db);
 }
