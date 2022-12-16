@@ -64,22 +64,26 @@ void execute_insert(string *fout, database_t* const db, const char* const fname,
                     const char* const lname, const unsigned id, const char* const section,
                     const tm birthdate) {
   char buffer[428];
+  bool find = false;
   for (student_t& student : db->data) {
     if (student.id == id) {
-      strcpy(buffer, "The student already exists !/end");
+      *fout = "The student already exists !/end";
+      find = true;
       break;
     }
   }
-  db->data.emplace_back();
-  student_t *s = &db->data.back();
-  s->id = id;
-  snprintf(s->fname, sizeof(s->fname), "%s", fname);
-  snprintf(s->lname, sizeof(s->lname), "%s", lname);
-  snprintf(s->section, sizeof(s->section), "%s", section);
-  s->birthdate = birthdate;
-  student_to_str(buffer, s, 428);
-  cout << buffer;
-  *fout = *fout + buffer + "/end";
+  if(find == false){
+    db->data.emplace_back();
+    student_t *s = &db->data.back();
+    s->id = id;
+    snprintf(s->fname, sizeof(s->fname), "%s", fname);
+    snprintf(s->lname, sizeof(s->lname), "%s", lname);
+    snprintf(s->section, sizeof(s->section), "%s", section);
+    s->birthdate = birthdate;
+    student_to_str(buffer, s, 428);
+    cout << buffer;
+    *fout = *fout + buffer + "/end";
+  }
 }
 
 void execute_delete(string *fout, database_t* const db, const char* const field,

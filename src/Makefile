@@ -12,6 +12,6 @@ queries.o: queries.cpp queries.hpp
 	$(CXX) -c queries.cpp $(CXXFLAGS)
 
 smalldb: sdbsh.cpp smalldb.cpp db.o student.o queries.o
-	$(CXX) -o smalldb smalldb.cpp db.o student.o queries.o $(CXXFLAGS) -lpthread
+	$(CXX) -o smalldb smalldb.cpp db.o student.o queries.o $(CXXFLAGS)
 	$(CXX) -o sdbsh sdbsh.cpp $(CXXFLAGS)
 

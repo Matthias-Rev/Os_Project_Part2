@@ -68,26 +68,24 @@ int main(int argc, char const *argv[]) {
 	init_sigA();
 	addr_size = sizeof(SA_IN);
 	
-	while (true){
-		if(deconnection==false){
-			client_socket = checked(accept(server_fd, (SA*) &client_addr, (socklen_t*)&addr_size));//accept la premiere connexion de la liste d'attente et lui assigne un socket descriptor
-			list_client.push_back(client_socket);
-			printf("smalldb: (%d) accepted connection !\n", client_socket);//affiche le socket descriptor de la nouvelles connexion
-			
-			// permet que seul le thread principal récupère le SIGINT/SIGUSR1
-			sigset_t mask;
-			sigemptyset(&mask);
-			sigaddset(&mask, SIGINT);
-			sigaddset(&mask, SIGUSR1);
-			sigprocmask(SIG_BLOCK, &mask, NULL);
+	while (deconnection==false){
+		client_socket = checked(accept(server_fd, (SA*) &client_addr, (socklen_t*)&addr_size));//accept la premiere connexion de la liste d'attente et lui assigne un socket descriptor
+		list_client.push_back(client_socket);
+		printf("smalldb: (%d) accepted connection !\n", client_socket);//affiche le socket descriptor de la nouvelles connexion
+		
+		// permet que seul le thread principal récupère le SIGINT/SIGUSR1
+		sigset_t mask;
+		sigemptyset(&mask);
+		sigaddset(&mask, SIGINT);
+		sigaddset(&mask, SIGUSR1);
+		sigprocmask(SIG_BLOCK, &mask, NULL);
 
-			pthread_t t;								//initialise une structure pthread
-			int *pclient = (int*)malloc(sizeof(int));//création d'un pointeur vers le socket descriptor du client
-			*pclient = client_socket;
-			pthread_create(&t, NULL,thread_connection, pclient);//cree le thread qui execute thread_connection
+		pthread_t t;								//initialise une structure pthread
+		int *pclient = (int*)malloc(sizeof(int));//création d'un pointeur vers le socket descriptor du client
+		*pclient = client_socket;
+		pthread_create(&t, NULL,thread_connection, pclient);//cree le thread qui execute thread_connection
 
-			sigprocmask(SIG_UNBLOCK, &mask, NULL);
-		}
+		sigprocmask(SIG_UNBLOCK, &mask, NULL);
 	}
 	return 0;
 }
@@ -153,9 +151,9 @@ void * thread_connection(void* p_client_socket){
 
 	while (true){
 		if(reading(client_socket, buffer, answer, &query_type)==false){//check si le client a ferme la connexion
-			m_deco.lock();
+			m_deco.lock();											   //permet d'éviter les problèmes de concurences sur la liste client
 			list_client.pop_back();
-			close(client_socket);// ferme le socket du client
+			close(client_socket);									   // ferme le socket du client
 			m_deco.unlock();
 			return NULL;
 		}
@@ -179,9 +177,9 @@ void * thread_connection(void* p_client_socket){
  * la redefinition des fonctions par defaut des signaux SIGINT/SIGUSR1
 */
 void handler(int signum) {
-	printf("Waiting for the client deconnection....\n");
-	deconnection = true;
-	while(list_client.size()!=0){;
+	printf("\nWaiting for clients deconnection....\n");
+	deconnection = true;							//empeche d'accepter d'autre client durant la fermeture du serveur
+	while(list_client.size()!=0){;					//attend que chaques clients se déconnectent
 	}
 	db_save(db);
 	close(server_fd);
