@@ -36,20 +36,22 @@ database_t *db = (database_t*)malloc(sizeof(database_t));//permet d'allouer de l
 std::mutex readingA;								//permet de lock la db pour la lecture
 std::mutex writingA;								//permet de lock la db pour l'ecriture
 std::mutex generalAcess;							//mutex qui bloque l'acces géneral à la database(expliquer plus precisement dans db.cpp)
+std::mutex m_deco;
 
-int readerQ;								//représente le nombre de demande de lecture en attente
+int readerQ;										//représente le nombre de demande de lecture en attente
 std::vector<int> list_client;
+bool deconnection = false;
 
-SA_IN server_addr, client_addr;				//structUre d'addresage client/serveur			
+SA_IN server_addr, client_addr;						//structUre d'addresage client/serveur			
 
-void init_socket(int *server_fd);			//permet d'initialiser le socket
-void * thread_connection(void* p_client_socket);//fonction utiliser par les threads (envoie, reception des messages)
-void handler(int signum);					//fonction du control C
-void handler_syn(int signum);				//fonction du SIGUSR1
+void init_socket(int *server_fd);					//permet d'initialiser le socket
+void * thread_connection(void* p_client_socket);	//fonction utiliser par les threads (envoie, reception des messages)
+void handler(int signum);							//fonction du control C
+void handler_syn(int signum);						//fonction du SIGUSR1
 bool reading(int client_socket,char buffer[BUFFSIZE], char answer[BUFFSIZE], int* query_type);//lecture du message reçu, et traitement de ce message par la db
 bool command_exist(const char* const buffer, int* query_type);//recherche si la command envoye existe
-void init_sigA();							//initialisation des mask
-bool sending(int client_socket, char answer[BUFFSIZE2], int query_type);
+void init_sigA();									//initialisation des mask
+bool sending(int client_socket, char answer[BUFFSIZE2], int query_type);//envoie les messages aux clients
 
 int main(int argc, char const *argv[]) {
 
@@ -57,9 +59,9 @@ int main(int argc, char const *argv[]) {
 		db_path = argv[1];
 	}
 
-	db_load(db,db_path);					//initialise la database en fonction de l'argument donné
-	signal(SIGPIPE, SIG_IGN); 				//permet de changer la fonction par défaut d'un signal
-	signal(SIGUSR1, handler_syn);			//idem
+	db_load(db,db_path);							//initialise la database en fonction de l'argument donné
+	signal(SIGPIPE, SIG_IGN); 						//permet de changer la fonction par défaut d'un signal
+	signal(SIGUSR1, handler_syn);					//idem
 
 	// Initialisation du socket/mask
 	init_socket(&server_fd);
@@ -67,23 +69,25 @@ int main(int argc, char const *argv[]) {
 	addr_size = sizeof(SA_IN);
 	
 	while (true){
-		client_socket = checked(accept(server_fd, (SA*) &client_addr, (socklen_t*)&addr_size));//accept la premiere connexion de la liste d'attente et lui assigne un socket descriptor
-		list_client.push_back(client_socket);
-		printf("smalldb: (%d) accepted connection !\n", client_socket);//affiche le socket descriptor de la nouvelles connexion
-		
-		// permet que seul le thread principal récupère le SIGINT/SIGUSR1
-		sigset_t mask;
-		sigemptyset(&mask);
-		sigaddset(&mask, SIGINT);
-		sigaddset(&mask, SIGUSR1);
-		sigprocmask(SIG_BLOCK, &mask, NULL);
+		if(deconnection==false){
+			client_socket = checked(accept(server_fd, (SA*) &client_addr, (socklen_t*)&addr_size));//accept la premiere connexion de la liste d'attente et lui assigne un socket descriptor
+			list_client.push_back(client_socket);
+			printf("smalldb: (%d) accepted connection !\n", client_socket);//affiche le socket descriptor de la nouvelles connexion
+			
+			// permet que seul le thread principal récupère le SIGINT/SIGUSR1
+			sigset_t mask;
+			sigemptyset(&mask);
+			sigaddset(&mask, SIGINT);
+			sigaddset(&mask, SIGUSR1);
+			sigprocmask(SIG_BLOCK, &mask, NULL);
 
-		pthread_t t;						//initialise une structure pthread
-		int *pclient = (int*)malloc(sizeof(int));//création d'un pointeur vers le socket descriptor du client
-		*pclient = client_socket;
-		pthread_create(&t, NULL,thread_connection, pclient);//cree le thread qui execute thread_connection
+			pthread_t t;								//initialise une structure pthread
+			int *pclient = (int*)malloc(sizeof(int));//création d'un pointeur vers le socket descriptor du client
+			*pclient = client_socket;
+			pthread_create(&t, NULL,thread_connection, pclient);//cree le thread qui execute thread_connection
 
-		sigprocmask(SIG_UNBLOCK, &mask, NULL);
+			sigprocmask(SIG_UNBLOCK, &mask, NULL);
+		}
 	}
 	return 0;
 }
@@ -149,14 +153,20 @@ void * thread_connection(void* p_client_socket){
 
 	while (true){
 		if(reading(client_socket, buffer, answer, &query_type)==false){//check si le client a ferme la connexion
+			m_deco.lock();
+			list_client.pop_back();
 			close(client_socket);// ferme le socket du client
+			m_deco.unlock();
 			return NULL;
 		}
 		if(sending(client_socket, answer, query_type)==false){//envoie la reponse du serveur
 			printf("smalldb: Lost connection to client (%d)\n", client_socket);//si c'est un echec alors le client a subi un probleme fermant la connexion
 			printf("smalldb: closing connection %d\n", client_socket);
 			printf("smalldb: closing thread for connection %d\n", client_socket);
-			close(client_socket);
+			m_deco.lock();
+			list_client.pop_back();
+			close(client_socket);// ferme le socket du client
+			m_deco.unlock();
 			return NULL;
 		}
 		bzero(buffer,BUFFSIZE);//vide le buffer pour la prochaine requete
@@ -169,42 +179,45 @@ void * thread_connection(void* p_client_socket){
  * la redefinition des fonctions par defaut des signaux SIGINT/SIGUSR1
 */
 void handler(int signum) {
-	printf("Signal reçu %d", signum);
-	db_save(db);
-	for(int i : list_client) {
-		close(i);
+	printf("Waiting for the client deconnection....\n");
+	deconnection = true;
+	while(list_client.size()!=0){;
 	}
+	db_save(db);
 	close(server_fd);
 }
 
 void handler_syn(int signum){
-	printf("Signal reçu %d", signum);
+	printf("Saving the database...");
 	db_save(db);
 }
 
+/*
+ * Permet d'envoyer le message envoye vers le client, et fait la différence entre les requêtes select et les autres.
+ * La différence est faite car pour les requêtes select, le serveur doit renvoyer tous les étudiants répondants au filtre
+ * ce qui ne peut pas être fait avec un string au risque d'avoir un overflow. Pour contrer ce problème, nous utilisons un fichier txt
+ * qui stocke tous les étudiants concernés, on lit alors ce fichier ici et on envoie la réponse ligne par ligne.
+*/
+
 bool sending(int client_socket, char answer[BUFFSIZE2], int query_type){
-	int count;
-	std::cout << query_type;
-	scanf("%d", &count);
-	if(query_type == QUERY_SELECT){
-		//ici
+	if(query_type == QUERY_SELECT && strlen(answer)==0){             //query_type est le return de command exist qui nous renseigne sur la nature de la requête
 		FILE *fp;
 		char filename[512];
-		file_create(client_socket, filename);
+		file_create(client_socket, filename);   //le nom du fichier est file_select + le numéro du socket descriptor du client
     	fp = fopen(filename, "r");
-		char data[BUFFSIZE] = {0};
+		char data[BUFFSIZE] = {0};				//permet de stocker les lignes
 		while(fgets(data, BUFFSIZE, fp) != NULL) {
-			std::cout << data;
 			if (send(client_socket, data, sizeof(data), 0) == -1) {
-				perror("[-]Error in sending file.");
+				perror("[-]Error in sending file.\n");
 				return false;
 			}
 			bzero(data, BUFFSIZE);
 		}
 		fclose(fp);
 	}
-	else if(query_type == QUERY_OTHER){
-		if(send(client_socket, answer, strlen(answer)+1, 0)<0){
+	//else if(query_type == QUERY_OTHER || strlen(answer)!=0){
+	else{
+		if(send(client_socket, answer, strlen(answer)+1, 0)<0){//envoie le string contenant la réponse du serveur
 			return false;
 		}
 	}

@@ -6,23 +6,25 @@
 #include <iostream>
 #define SIZE 1024
 
-//j'ai chnagé à 10000
 const char* PORT;           //port de la connexion
 #include "./common.h"
 
+/* 
+ * Permet de lire la réponse du serveur, on arrête de lire le PORT quand le message lu contient à la fin "/end".
+ */
 void reading_file(int sockfd){
   char buffer[SIZE];
   while (1) {
     recv(sockfd, buffer, SIZE, 0);
-    std::string my_str = std::string(buffer);
-    std::size_t ind = my_str.find("/end"); // Find the starting position of substring in the string
-    if(ind !=std::string::npos){
-        my_str.erase(ind,my_str.length());
+    std::string my_str = std::string(buffer); //reconversion en string pour utiliser les fonctions de la classe string
+    std::size_t ind = my_str.find("/end");    //trouver la position du mot recherché
+    if(ind !=std::string::npos){              //string::npos représente la plus grand valeur de size_t, elle est équivalente à la position trouvé
+                                              //par .find si le string ne contient pas le mot.
+        my_str.erase(ind,my_str.length());    //si c'est le dernier message, on supprime le mot "/end".
         std::cout << my_str << "\n";
         break;
     }
-    //std::cout << strncmp(buffer,"/end",strlen("/end")-1);
-    std::cout << buffer;
+    std::cout << buffer;                      //on affiche les messages reçus
     bzero(buffer, SIZE);
   }
 }
@@ -60,7 +62,7 @@ int main(int argc, char const *argv[]) {
             close(sock);
             return 0;
         }
-     	reading_file(sock);
+     	reading_file(sock);           //lit la réponse du serveur
     }
     else{
       break;

@@ -12,8 +12,7 @@ void execute_select(string *fout, database_t* const db, const char* const field,
   string found_w = "";
   char filename[512];
   file_create(socket, filename);
-  printf("%s\n", filename);
-  std::ofstream file_select;// (filename);
+  std::ofstream file_select;
   file_select.open (filename, ios::out | ios::trunc);
   int count = 0;
   if (file_select.is_open() != true){
@@ -22,7 +21,7 @@ void execute_select(string *fout, database_t* const db, const char* const field,
   size_t buffersize = 428;
   std::function<bool(const student_t&)> predicate = get_filter(field, value);
   if (!predicate) {
-    query_fail_bad_filter(fout, field);
+    query_fail_bad_filter(fout, field); //les messages d'erreur sont enregistrés dans fout, et ne sont donc pas afficher !
     return;
   }
   for (const student_t& s : db->data) {
@@ -30,17 +29,13 @@ void execute_select(string *fout, database_t* const db, const char* const field,
       count++;
       char buffer[428];
       student_to_str(buffer, &s, buffersize);
-      //found_w = (string)buffer + "\n";
       file_select << buffer << "\n";
       
     }
   }
   string final_rep = " student(s) selected/end";
-  file_select << to_string(count) << final_rep;
+  file_select << to_string(count) << final_rep; //on écrit dans le fichier txt ouvert
   file_select.close();
-  //found_w = found_w + to_string(count) + final_rep;
-  //*fout = found_w;
-  std::cout << "Successfully sent !";
 }
 
 void execute_update(string *fout, database_t* const db, const char* const ffield, const char* const fvalue, const char* const efield, const char* const evalue) {
@@ -208,8 +203,7 @@ void query_fail_bad_filter(string *fout, const char* const filter) {
   *fout= answ;
 }
 void query_fail_bad_update(string *fout, const char* const field, const char* const filter) {
-  printf("%s and %s are bad filter", field, filter);
-  string answ="You can not apply /end";
+  string answ="You can not update /end";
   *fout= answ;
 }
 
