@@ -2,7 +2,8 @@
 set -m
 # enregistrer l'argument donner dans la commande
 var1=$1
-smalldb=$(pgrep smalldb)
+smalldb=( $(pgrep smalldb) )
+unset smalldb[-1]
 
 #list_ip sert à stocker tous les IP connectées au serveur
 #j'envoie le résultat de la commande ss dans un pipe, awk retourne la 5ème valeurs des colomnes du pip (cad Peer Address:Port)
@@ -27,12 +28,18 @@ if [ "$var1" = "list" ]; then
 fi
 
 if [ "$var1" = "sync" ]; then
-	echo "Sync process $smalldb..."
-	#envoie un signal permettant de sauvegarder la db
-	kill -s -SIGUSR1 $smalldb
+	for id in ${smalldb[@]};
+	do
+		echo "Sync process $id..."
+		#envoie un signal permettant de sauvegarder la db
+		kill -SIGUSR1 $id
+	done
 fi
 if [ "$var1" = "stop" ]; then
-	echo "Stopping in progress...."
-	# Demande la confirmation de la supression
-	kill -s -SIGINT $smalldb
+	for id in ${smalldb[@]};
+	do
+		echo "Stopping in progress...."
+		# Demande la confirmation de la supression
+		kill -SIGINT $id
+	done
 fi
